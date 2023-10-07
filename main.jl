@@ -1,6 +1,7 @@
 
 include("Lorenz96.jl")
 include("KalmanFilter.jl")
+include("ParticleFilter.jl")
 
 # using Lorenz96
 # using KalmanFilter
@@ -27,7 +28,8 @@ function main()
     # initial_x[20] *= 1.001
     initial_x += randn(rng, 40)
     Start = 365 / 5
-    Goal = 365 * 2 / 5
+    # Goal = 365 * 2 / 5
+    Goal = 370 / 5
 
     # 真値の生成
     X = get_true_state(lorenz_parameter, initial_x, Start, Goal)
@@ -38,20 +40,151 @@ function main()
     observed_X = make_observation_data(X, length(tn), rng)
 
     # アトラクタ上からランダムな初期値をとる
-    initial_x = get_random_point_on_attractor(rng, lorenz_parameter)
+    # initial_x = get_random_point_on_attractor(rng, lorenz_parameter)
 
+    # assignment1_SIS(observed_X, X, X_converted, tn, lorenz_parameter, rng; ensemble_size=100)
+    assignment1_SIR(observed_X, X, X_converted, tn, lorenz_parameter, rng; ensemble_size=1000)
 end
 
+function assignment1_SIR(observed_X, true_x, true_x_converted ,tn, lorenz_parameter, rng; ensemble_size=1000)
+    Xa = [Float64[] for i = 1:length(tn)]
+    W = [Float64[] for i = 1:length(tn)]
+    N_eff = zeros(Float64, length(tn))
+    N = length(tn) - 1
+
+    # make initial ensemble
+    initial_Xf = [Float64[] for _ = 1:ensemble_size]
+    for k = 1:ensemble_size
+        initial_Xf[k] = get_random_point_on_attractor(rng, lorenz_parameter)
+    end
+    println(stderr, "initial ensemble generated")
+
+    num_observed = lorenz_parameter.num_sites
+    initial_H = Matrix{Int64}(I, num_observed, num_observed)
+    initial_R = Matrix{Int64}(I, num_observed, num_observed)
+
+    particle_parameter = ParticleFilter.Parameter(Lorenz96.step, ensemble_size)
+    snap_shot = ParticleFilter.SnapShot(initial_Xf, ones(ensemble_size) / ensemble_size, initial_H, initial_R)
+
+    println(stderr, "start assimilation")
+    Xa[1], W[1], N_eff[1] = store_result(snap_shot)
+
+    for i in 1:N
+        y_observed = observed_X[i]
+        snap_shot = ParticleFilter.SIR(y_observed, tn[i], particle_parameter, lorenz_parameter, snap_shot)
+
+        Xa[i+1], W[i+1], N_eff[i+1] = store_result(snap_shot)
+        println(stderr, "t = $(tn[i+1]); done.")
+    end
+
+    println(stderr, "assimilation done; plotting...")
+
+    if (true)
+        RMSEs = get_diffs(lorenz_parameter.num_sites, Xa, true_x)
+        OBSEs = get_diffs(lorenz_parameter.num_sites, observed_X, true_x)
+
+        plot( tn*5, RMSEs, label="RMSE", 
+             xlabel="day", ylabel="RMSE", title="SIR method; m = $(ensemble_size)", legend=:best, 
+             dpi=600, size=(600, 600))
+        plot!(tn*5, OBSEs, label="OBSE")
+        savefig("SIR_RMSE-$(ensemble_size).png")
+    end
+
+    if(true)
+        println(stderr, convert_matrix(W)[:, 1])
+        println(stderr, convert_matrix(W)[:, 11])
+        println(stderr, convert_matrix(W)[:, 21])
+        println(stderr, "x: $(ensemble_size) sites, t: $(length(tn)) steps, size: $(size(convert_matrix(W)))")
+        heatmap(1:ensemble_size, tn*5, transpose(convert_matrix(W)), 
+                color=cgrad(:thermal, 100, categorical = true, scale = :exp10),
+                xlabel="ensemble member", ylabel="day", 
+                title="SIR method; m = $(ensemble_size) \n Weight Hovmollor Diagram)", 
+                dpi=600, size=(600, 600))
+        savefig("SIR_weight_hovmollor-$(ensemble_size).png")
+    end
+
+    if(true)
+        plot(tn*5, N_eff, label="N_eff", xlabel="day", ylabel="N_eff", yscale=:log10, 
+             title="SIR method; m = $(ensemble_size) \n N_eff", legend=:best, 
+             dpi=600, size=(600, 600))
+        savefig("SIR_N_eff-$(ensemble_size).png")
+    end
+end
+
+function assignment1_SIS(observed_X, true_x, true_x_converted ,tn, lorenz_parameter, rng; ensemble_size=1000)
+    Xa = [Float64[] for i = 1:length(tn)]
+    W = [Float64[] for i = 1:length(tn)]
+    N_eff = zeros(Float64, length(tn))
+    N = length(tn) - 1
+
+    # make initial ensemble
+    initial_Xf = [Float64[] for _ = 1:ensemble_size]
+    for k = 1:ensemble_size
+        initial_Xf[k] = get_random_point_on_attractor(rng, lorenz_parameter)
+    end
+    println(stderr, "initial ensemble generated")
+
+    num_observed = lorenz_parameter.num_sites
+    initial_H = Matrix{Int64}(I, num_observed, num_observed)
+    initial_R = Matrix{Int64}(I, num_observed, num_observed)
+
+    particle_parameter = ParticleFilter.Parameter(Lorenz96.step, ensemble_size)
+    snap_shot = ParticleFilter.SnapShot(initial_Xf, ones(ensemble_size) / ensemble_size, initial_H, initial_R)
+
+    println(stderr, "start assimilation")
+    Xa[1], W[1], N_eff[1] = store_result(snap_shot)
+
+    for i in 1:N
+        y_observed = observed_X[i]
+        snap_shot = ParticleFilter.SIS(y_observed, tn[i], particle_parameter, lorenz_parameter, snap_shot)
+
+        Xa[i+1], W[i+1], N_eff[i+1] = store_result(snap_shot)
+        println(stderr, "t = $(tn[i+1]); done.")
+    end
+
+    println(stderr, "assimilation done; plotting...")
+
+    if (true)
+        RMSEs = get_diffs(lorenz_parameter.num_sites, Xa, true_x)
+        OBSEs = get_diffs(lorenz_parameter.num_sites, observed_X, true_x)
+
+        plot( tn*5, RMSEs, label="RMSE", 
+             xlabel="day", ylabel="RMSE", title="SIS method; m = $(ensemble_size)", legend=:best, 
+             dpi=600, size=(600, 600))
+        plot!(tn*5, OBSEs, label="OBSE")
+        savefig("SIS_RMSE-$(ensemble_size).png")
+    end
+
+    if(true)
+        println(stderr, convert_matrix(W)[:, 1])
+        println(stderr, convert_matrix(W)[:, 11])
+        println(stderr, convert_matrix(W)[:, 21])
+        println(stderr, "x: $(ensemble_size) sites, t: $(length(tn)) steps, size: $(size(convert_matrix(W)))")
+        heatmap(1:ensemble_size, tn*5, transpose(convert_matrix(W)), 
+                color=cgrad(:thermal, 100, categorical = true, scale = :exp10),
+                xlabel="ensemble member", ylabel="day", 
+                title="SIS method; m = $(ensemble_size) \n Weight Hovmollor Diagram)", 
+                dpi=600, size=(600, 600))
+        savefig("SIS_weight_hovmollor-$(ensemble_size).png")
+    end
+
+    if(true)
+        plot(tn*5, N_eff, label="N_eff", xlabel="day", ylabel="N_eff", yscale=:log10, 
+             title="SIS method; m = $(ensemble_size) \n N_eff", legend=:best, 
+             dpi=600, size=(600, 600))
+        savefig("SIS_N_eff-$(ensemble_size).png")
+    end
+end
 
 # utilities --------------------------------
 
 function convert_matrix(X)
-    n = length(X)
-    m = length(X[1])
+    m = length(X)
+    n = length(X[1])
     converted = zeros(n, m)
     for i = eachindex(X)
         for j = eachindex(X[i])
-            converted[i, j] = X[i][j]
+            converted[j, i] = X[i][j] # X[i][j]はi番目の時刻のj番目のsiteの値; X[i] = converted[:, i]
         end
     end
     return converted
@@ -357,5 +490,12 @@ function store_result(snap_shot::KalmanFilter.SnapShot, num_sites)
     return X_a, tr_Rho_a, tr_Rho_f
 end
 
+function store_result(snap_shot::ParticleFilter.SnapShot)
+    w = snap_shot.w
+    Xf_mat = convert_matrix(snap_shot.Xf)
+    x_a = Xf_mat * w
+    N_eff = snap_shot.N_eff
+    return x_a, w, N_eff
+end
 
 main()

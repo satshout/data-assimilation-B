@@ -1,0 +1,182 @@
+/* @theme base */
+@import "gaia";
+
+:root {
+    --main-theme: rgb(14, 131, 253);
+    --background-theme: rgb(255, 255, 255);
+    --background-code: rgb(255, 229, 193);
+    --black: rgb(40, 40, 40);
+    --h1-font-size: 50px;
+    --h2-font-size: 45px;
+    --h3-font-size: 40px;
+    --h4-font-size: 35px;
+    --header-footer-font-size: 20px;
+    --main-font-size: 30px;
+    --font-weight-light: 200;
+    --font-weight-normal: 400;
+    --font-weight-bold: 700;
+    --normal-border-radius: 5px;
+    font-family: 'Segoe WPC', 'Segoe UI', system-ui, 'Ubuntu', 'Droid Sans', sans-serif;
+}
+
+section.invert {
+    --main-theme: rgb(30, 150, 255);
+    --background-theme: rgb(40, 40, 40);
+    --background-code: rgb(255, 229, 193);
+    --black: rgb(255, 255, 255);
+    --h1-font-size: 50px;
+    --h2-font-size: 45px;
+    --h3-font-size: 40px;
+    --h4-font-size: 35px;
+    --lead-h1-font-size: 70px;
+    --lead-h2-font-size: 50px;
+    --lead-h3-font-size: 45px;
+    --lead-h4-font-size: 40px;
+    --header-footer-font-size: 20px;
+    --main-font-size: 30px;
+    --font-weight-light: 200;
+    --font-weight-normal: 400;
+    --font-weight-bold: 700;
+    --normal-border-radius: 5px;
+}
+
+section.invert h1 {
+    font-size: var(--lead-h1-font-size);
+    margin: 100px auto 50px;
+    border: 0;
+    text-align: center;
+}
+
+section.invert h2 {
+    font-size: var(--lead-h2-font-size);
+    margin: 0 auto 50px;
+    text-align: center;
+}
+
+section.invert h3 {
+    font-size: var(--lead-h3-font-size);
+    margin: 0 auto 50px;
+    text-align: center;
+}
+
+section.invert h4 {
+    font-size: var(--lead-h4-font-size);
+    margin: 0 auto 50px;
+    text-align: center;
+}
+
+section {
+    padding: 60px 40px 10px 40px;
+    background-color: var(--background-theme);
+    font-size: var(--main-font-size);
+    font-weight: var(--font-weight-normal);
+    color: var(--black);
+}
+
+header {
+    width: 100%;
+    color: var(--black);
+    font-size: var(--header-footer-font-size);
+    height: 50px;
+}
+
+footer {
+    width: 100%;
+    color: var(--black);
+    text-align: left;
+    padding-bottom: 0;
+    font-size: var(--header-footer-font-size);
+    height: 50px;
+}
+
+section h1 {
+    font-size: var(--h1-font-size);
+    border-bottom: 2px solid var(--black);
+    margin-bottom: 10px;
+}
+
+section h2 {
+    font-size: var(--h2-font-size);
+    font-weight: var(--font-weight-normal);
+}
+
+section h3 {
+    font-size: var(--h3-font-size);
+    font-weight: var(--font-weight-normal);
+}
+
+section h4 {
+    font-size: var(--h4-font-size);
+    font-weight: var(--font-weight-normal);
+}
+
+section h5 {
+    margin-bottom: -24px;
+}
+
+section p img {
+    display: block;
+    margin: 0 auto;
+    border-radius: var(--normal-border-radius);
+}
+
+section pre {
+    background-color: var(--background-theme);
+    border-radius: var(--normal-border-radius);
+    border: var(--black) 1px solid;
+}
+
+section code.language-txt {
+    color: var(--black);
+}
+
+section code {
+    color: var(--black);
+    background-color: var(--background-code);
+    padding: 4px 8px 4px;
+    border-radius: 4px;
+}
+
+section ul,
+ol {
+    padding-left: 40px;
+}
+
+section.book {
+    columns: 2;
+    /* カラムの数 */
+    column-rule: 2px dashed #ccc;
+    /* カラム間の線の太さ・線の種類・線の色 */
+    column-gap: 3em;
+    /* カラム間の幅 */
+    /* 以下任意で見た目の調整 */
+    padding: 2em;
+    line-height: 2;
+    text-align: justify;
+    border: 1px solid #ccc;
+}
+
+section.book h1 {
+    columns: 1;
+    font-size: var(--h1-font-size);
+    border-bottom: 2px solid var(--black);
+    margin-bottom: 10px;
+}
+
+section.book h2 {
+    columns: 1;
+    font-size: var(--h2-font-size);
+    font-weight: var(--font-weight-normal);
+}
+
+section.book h3 {
+    columns: 1;
+    font-size: var(--h3-font-size);
+    font-weight: var(--font-weight-normal);
+}
+
+section.book h4 {
+    columns: 1;
+    font-size: var(--h4-font-size);
+    font-weight: var(--font-weight-normal);
+}

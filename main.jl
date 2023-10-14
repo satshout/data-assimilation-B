@@ -45,7 +45,7 @@ function main()
 
     # assignment1_SIS(observed_X, X, X_converted, tn, lorenz_parameter, rng; ensemble_size=1000)
     # assignment1_SIR(observed_X, X, X_converted, tn, lorenz_parameter, rng; ensemble_size=100000)
-    assignment1_SIR_anime(observed_X, X, X_converted, tn, lorenz_parameter, rng; ensemble_size=1000, Ne=10, perturb_r=0.5)
+    assignment1_SIR_anime(observed_X, X, X_converted, tn, lorenz_parameter, rng; ensemble_size=100000, Ne=10, perturb_r=0.5)
 end
 
 
@@ -107,13 +107,14 @@ function assignment1_SIR_anime(observed_X, true_X, true_x_converted ,tn, lorenz_
 
     savefig_RMSEvsOBSE(sir_Xa, observed_X, true_X, tn, title="SIR method; \n m = $(ensemble_size), Ne = $(Ne), |η| = $(perturb_r)", filename="SIR_RMSE-$(ensemble_size).png")
 
-    savefig_N_eff_sis_sir(tn, sis_N_eff, sir_N_eff, Ne, title="SIR method; \n m = $(ensemble_size), Ne = $(Ne),|η| = $(perturb_r)", filename="SIR_N_eff-$(ensemble_size).png")
+    savefig_N_eff_sis_sir(tn, sis_N_eff, sir_N_eff, Ne, title="SIR method; \n m = $(ensemble_size), Ne = $(Ne), |η| = $(perturb_r)", filename="SIR_N_eff-$(ensemble_size).png")
 
     # plot(x, line=:stem, marker=:star, markersize=20)
     for iframe in 1:N
         print(stderr, "iframe = $iframe; ")
 
-        s  = maximum(sir_W[iframe])
+        m = sis_N_eff[1]
+        s  = 10 / m
         x  = [i for i in -12:0.01:12]
         y  = observed_X[iframe][1]
         Bp = s * exp.(-0.5 * (y .- x).^2)
@@ -125,8 +126,8 @@ function assignment1_SIR_anime(observed_X, true_X, true_x_converted ,tn, lorenz_
         xt = true_X[iframe][1]
         w  = sis_W[iframe]
 
-        plot( sis_Xf1[iframe+1], w,   line=:stem, marker=:o, markersize=1, label="SIS weight", color=rgb(82, 114, 242))
-        plot!( x,                Bp,  linewidth=2,                 label="Background",  color=rgb(255, 75, 145))
+        plot( sis_Xf1[iframe], w,   line=:stem, marker=:o, markersize=1, label="SIS weight", color=rgb(82, 114, 242))
+        plot!( x,                Bp,  linewidth=3,                 label="Background",  color=rgb(255, 75, 145))
         plot!([y],              [0],  marker=:star, markersize=10, label="observed",    color=rgb(255, 118, 118))
         plot!([xt],             [0],  marker=:star, markersize=10, label="true",        color=rgb(255, 205, 75))
         plot!([xa],             [0],  marker=:star, markersize=10, label="assimilated", color=rgb(8, 2, 163),
@@ -140,8 +141,8 @@ function assignment1_SIR_anime(observed_X, true_X, true_x_converted ,tn, lorenz_
         xa = sir_Xa[iframe][1]
         w  = sir_W[iframe]
 
-        plot( sir_Xf1[iframe+1], w,   line=:stem, marker=:o, markersize=1, label="SIR weight", color=rgb(82, 114, 242))
-        plot!( x,                Bp,  linewidth=2,                 label="Background",  color=rgb(255, 75, 145))
+        plot( sir_Xf1[iframe], w,   line=:stem, marker=:o, markersize=1, label="SIR weight", color=rgb(82, 114, 242))
+        plot!( x,                Bp,  linewidth=3,                 label="Background",  color=rgb(255, 75, 145))
         plot!([y],              [0],  marker=:star, markersize=10, label="observed",    color=rgb(255, 118, 118))
         plot!([xt],             [0],  marker=:star, markersize=10, label="true",        color=rgb(255, 205, 75))
         plot!([xa],             [0],  marker=:star, markersize=10, label="assimilated", color=rgb(8, 2, 163),

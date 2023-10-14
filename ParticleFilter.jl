@@ -67,9 +67,7 @@ function SIS(y_observed, t, parameter::Parameter, lorenz_parameter::Main.Lorenz9
         nx_Xf[k] = parameter.forecast(Xf[k], t, lorenz_parameter)
         l_k = gauss(y - H * nx_Xf[k], R)
         nx_w[k] = snap_shot.w[k] * l_k
-        # print(stderr, "$l_k, ")
     end
-    # print(stderr, "\n")
 
     # 正規化
     nx_w = nx_w / sum(nx_w)

@@ -29,8 +29,9 @@ function main()
     # initial_x[20] *= 1.001
     initial_x += randn(rng, 40)
     Start = 365 / 5
-    # Goal = 365 * 2 / 5
-    Goal = 380 / 5
+    # Goal = 380 / 5
+    # Goal = 395 / 5
+    Goal = 365 * 2 / 5
 
     # 真値の生成
     X = get_true_state(lorenz_parameter, initial_x, Start, Goal)
@@ -45,9 +46,154 @@ function main()
 
     # assignment1_SIS(observed_X, X, X_converted, tn, lorenz_parameter, rng; ensemble_size=1000)
     # assignment1_SIR(observed_X, X, X_converted, tn, lorenz_parameter, rng; ensemble_size=100000)
-    assignment1_SIR_anime(observed_X, X, X_converted, tn, lorenz_parameter, rng; ensemble_size=100000, Ne=10, perturb_r=0.5)
+    # assignment1_SIR_anime(observed_X, X, X_converted, tn, lorenz_parameter, rng; ensemble_size=100000, Ne=10, perturb_r=0.5)
+    # assignment1_SIR_perturb_vs_ensemble(observed_X, X, X_converted, tn, lorenz_parameter, rng; Ne=100)
+    # assignment1_SIR_perturb_vs_Ne(observed_X, X, X_converted, tn, lorenz_parameter, rng; ensemble_size=50000)
+    # assignment1_SIR_anime(observed_X, X, X_converted, tn, lorenz_parameter, rng; ensemble_size=50000, Ne=100, perturb_r=0.05)
+    # assignment1_SIR_anime(observed_X, X, X_converted, tn, lorenz_parameter, rng; ensemble_size=50000, Ne=100, perturb_r=5.0)
+    assignment1_SIR(observed_X, X, X_converted, tn, lorenz_parameter, rng; ensemble_size=100000, Ne=10, perturb_r=0.5)
 end
 
+
+function assignment1_SIR_perturb_vs_Ne(observed_X, true_X, true_x_converted ,tn, lorenz_parameter, rng; ensemble_size=10000)
+    sir_Xa = [Float64[] for i = 1:length(tn)]
+    sir_W = [Float64[] for i = 1:length(tn)]
+    sir_N_eff = zeros(Float64, length(tn))
+
+    N = length(tn) - 1
+
+    num_observed = lorenz_parameter.num_sites
+    initial_H = Matrix{Int64}(I, num_observed, num_observed)
+    initial_R = Matrix{Int64}(I, num_observed, num_observed)
+
+    N_cand = [0, 10, 100, 500, 1000, 10000]
+    p_cand = [0, 0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 5]
+    result_mat = zeros(Float64, length(N_cand), length(p_cand)) # mean RMSE
+    for N_idx in eachindex(N_cand)
+        Ne = N_cand[N_idx]
+
+        println(stderr, "m = $(ensemble_size)")
+
+        # make initial ensemble
+        initial_Xf = [Float64[] for _ = 1:ensemble_size]
+        for k = 1:ensemble_size
+            # initial_Xf[k] = get_random_point_on_attractor(rng, lorenz_parameter)
+            initial_Xf[k] = observed_X[1] + 1.0 * randn(rng, lorenz_parameter.num_sites)
+        end
+        println(stderr, "initial ensemble generated")
+
+        for p_idx in eachindex(p_cand)
+            perturb_r = p_cand[p_idx]
+
+            particle_parameter = ParticleFilter.Parameter(Lorenz96.step, ensemble_size)
+            sir_snap_shot = ParticleFilter.SnapShot(initial_Xf, ones(ensemble_size) / ensemble_size, initial_H, initial_R)
+            
+            println(stderr, "start assimilation Ne = $(Ne), |η| = $(perturb_r)")
+            sir_Xa[1], sir_W[1], sir_N_eff[1] = store_result(sir_snap_shot)
+            
+            for i in 1:N
+                print(stderr, f"t = {tn[i+1]:.2f}; ")
+                y_observed = observed_X[i+1]
+            
+                sir_snap_shot = ParticleFilter.SIR(y_observed, tn[i+1], particle_parameter, lorenz_parameter, sir_snap_shot, rng, 
+                                                   Ne=Ne, perturb_r=perturb_r)
+            
+                sir_Xa[i+1], sir_W[i+1], sir_N_eff[i+1] = store_result(sir_snap_shot)
+                print(stderr, "done.\n")
+            end
+
+            result_mat[N_idx, p_idx] = mean(get_diffs(lorenz_parameter.num_sites, sir_Xa, true_X))
+        end
+    end
+
+    println(stderr, "assimilation done; plotting...")
+
+    heatmap(result_mat, color=:matter, 
+            title="mean RMSE; ensemble_size = $(ensemble_size) (fixed)", 
+            ylabel="\n Resampling Threshold: Ne", 
+            yticks=([idx for idx in eachindex(N_cand)], [string(N_cand[idx]) for idx in eachindex(N_cand)]), 
+            xlabel="perturb radius: |η|", 
+            xticks=([idx for idx in eachindex(p_cand)], [string(p_cand[idx]) for idx in eachindex(p_cand)]),
+            dpi=600, size=(900, 600))
+    
+    fontsize = 12
+    nrow, ncol = size(result_mat)
+    ann = [(j,i, text(round(result_mat[i,j], digits=2), fontsize, :gray20, :center))
+                for i in 1:nrow for j in 1:ncol]
+    annotate!(ann, linecolor=:white)
+
+    savefig("SIR_perturb_vs_Ne.png")
+end
+
+function assignment1_SIR_perturb_vs_ensemble(observed_X, true_X, true_x_converted ,tn, lorenz_parameter, rng; Ne=100)
+    sir_Xa = [Float64[] for i = 1:length(tn)]
+    sir_W = [Float64[] for i = 1:length(tn)]
+    sir_N_eff = zeros(Float64, length(tn))
+
+    N = length(tn) - 1
+
+    num_observed = lorenz_parameter.num_sites
+    initial_H = Matrix{Int64}(I, num_observed, num_observed)
+    initial_R = Matrix{Int64}(I, num_observed, num_observed)
+
+    m_cand = [100, 1000, 5000, 10000, 50000, 100000]
+    p_cand = [0, 0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 5]
+    result_mat = zeros(Float64, length(m_cand), length(p_cand)) # mean RMSE
+    for m_idx in eachindex(m_cand)
+        ensemble_size = m_cand[m_idx]
+
+        println(stderr, "m = $(ensemble_size)")
+
+        # make initial ensemble
+        initial_Xf = [Float64[] for _ = 1:ensemble_size]
+        for k = 1:ensemble_size
+            # initial_Xf[k] = get_random_point_on_attractor(rng, lorenz_parameter)
+            initial_Xf[k] = observed_X[1] + 1.0 * randn(rng, lorenz_parameter.num_sites)
+        end
+        println(stderr, "initial ensemble generated")
+
+        for p_idx in eachindex(p_cand)
+            perturb_r = p_cand[p_idx]
+
+            particle_parameter = ParticleFilter.Parameter(Lorenz96.step, ensemble_size)
+            sir_snap_shot = ParticleFilter.SnapShot(initial_Xf, ones(ensemble_size) / ensemble_size, initial_H, initial_R)
+            
+            println(stderr, "start assimilation m = $(ensemble_size), |η| = $(perturb_r)")
+            sir_Xa[1], sir_W[1], sir_N_eff[1] = store_result(sir_snap_shot)
+            
+            for i in 1:N
+                print(stderr, f"t = {tn[i+1]:.2f}; ")
+                y_observed = observed_X[i+1]
+            
+                sir_snap_shot = ParticleFilter.SIR(y_observed, tn[i+1], particle_parameter, lorenz_parameter, sir_snap_shot, rng, 
+                                                   Ne=Ne, perturb_r=perturb_r)
+            
+                sir_Xa[i+1], sir_W[i+1], sir_N_eff[i+1] = store_result(sir_snap_shot)
+                print(stderr, "done.\n")
+            end
+
+            result_mat[m_idx, p_idx] = mean(get_diffs(lorenz_parameter.num_sites, sir_Xa, true_X))
+        end
+    end
+
+    println(stderr, "assimilation done; plotting...")
+
+    heatmap(result_mat, color=:matter, 
+            title="mean RMSE; Ne = $(Ne) (fixed)", 
+            ylabel="\n ensemble size: m", 
+            yticks=([idx for idx in eachindex(m_cand)], [string(m_cand[idx]) for idx in eachindex(m_cand)]), 
+            xlabel="perturb radius: |η|", 
+            xticks=([idx for idx in eachindex(p_cand)], [string(p_cand[idx]) for idx in eachindex(p_cand)]),
+            dpi=600, size=(900, 600))
+    
+    fontsize = 12
+    nrow, ncol = size(result_mat)
+    ann = [(j,i, text(round(result_mat[i,j], digits=2), fontsize, :gray20, :center))
+                for i in 1:nrow for j in 1:ncol]
+    annotate!(ann, linecolor=:white)
+
+    savefig("SIR_perturb_vs_ensemble.png")
+end
 
 function assignment1_SIR_anime(observed_X, true_X, true_x_converted ,tn, lorenz_parameter, rng; ensemble_size=10000, Ne=100, perturb_r=1.0)
     sis_Xa = [Float64[] for i = 1:length(tn)]
@@ -135,7 +281,7 @@ function assignment1_SIR_anime(observed_X, true_X, true_x_converted ,tn, lorenz_
               xlabel="x", ylabel="weight", title=f"time = {5*tn[iframe]:.2f}; SIS", 
               legend=:bottomleft, dpi=600, size=(600, 600))
 
-        savefig("./anim/$(ensemble_size)_$(iframe)-1_weight_stem.png")
+        savefig("./anim/$(ensemble_size)_$(perturb_r)_$(iframe)-1_weight_stem.png")
 
         #-SIR store_result--------------------------------
         xa = sir_Xa[iframe][1]
@@ -150,14 +296,14 @@ function assignment1_SIR_anime(observed_X, true_X, true_x_converted ,tn, lorenz_
               xlabel="x", ylabel="weight", title=f"time = {5*tn[iframe]:.2f}; SIR", 
               legend=:bottomleft, dpi=600, size=(600, 600))
 
-        savefig("./anim/$(ensemble_size)_$(iframe)-2_weight_stem.png")
+        savefig("./anim/$(ensemble_size)_$(perturb_r)_$(iframe)-2_weight_stem.png")
 
         print(stderr, "done.\n")
     end
 
 end
 
-function assignment1_SIR(observed_X, true_X, true_x_converted ,tn, lorenz_parameter, rng; ensemble_size=10000)
+function assignment1_SIR(observed_X, true_X, true_x_converted ,tn, lorenz_parameter, rng; ensemble_size=10000, Ne=100, perturb_r=1.0)
     Xa = [Float64[] for i = 1:length(tn)]
     W = [Float64[] for i = 1:length(tn)]
     N_eff = zeros(Float64, length(tn))
@@ -185,7 +331,7 @@ function assignment1_SIR(observed_X, true_X, true_x_converted ,tn, lorenz_parame
         print(stderr, "t = $(tn[i+1]); ")
         y_observed = observed_X[i+1]
         snap_shot = ParticleFilter.SIR(y_observed, tn[i+1], particle_parameter, lorenz_parameter, snap_shot, rng, 
-                                       Ne=100, perturb_r=1.0)
+                                       Ne=Ne, perturb_r=perturb_r)
 
         Xa[i+1], W[i+1], N_eff[i+1] = store_result(snap_shot)
         print(stderr, "done.\n")

@@ -48,10 +48,10 @@ function main()
     # assignment1_SIR(observed_X, X, X_converted, tn, lorenz_parameter, rng; ensemble_size=100000)
     # assignment1_SIR_anime(observed_X, X, X_converted, tn, lorenz_parameter, rng; ensemble_size=100000, Ne=10, perturb_r=0.5)
     # assignment1_SIR_perturb_vs_ensemble(observed_X, X, X_converted, tn, lorenz_parameter, rng; Ne=100)
-    # assignment1_SIR_perturb_vs_Ne(observed_X, X, X_converted, tn, lorenz_parameter, rng; ensemble_size=50000)
+    assignment1_SIR_perturb_vs_Ne(observed_X, X, X_converted, tn, lorenz_parameter, rng; ensemble_size=5000)
     # assignment1_SIR_anime(observed_X, X, X_converted, tn, lorenz_parameter, rng; ensemble_size=50000, Ne=100, perturb_r=0.05)
     # assignment1_SIR_anime(observed_X, X, X_converted, tn, lorenz_parameter, rng; ensemble_size=50000, Ne=100, perturb_r=5.0)
-    assignment1_SIR(observed_X, X, X_converted, tn, lorenz_parameter, rng; ensemble_size=100000, Ne=10, perturb_r=0.5)
+    # assignment1_SIR(observed_X, X, X_converted, tn, lorenz_parameter, rng; ensemble_size=100000, Ne=10, perturb_r=0.5)
 end
 
 

@@ -1,6 +1,9 @@
 {
     "markdown.marp.themes": [
-        "./styles/base2.css"
+        "./styles/base2.css",
+        "./styles/academic.css",
+        //"https://raw.githubusercontent.com/kaisugi/marp-theme-academic/main/themes/academic.css"
+
     ],
     "markdown.marp.enableHtml": true
 }

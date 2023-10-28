@@ -25,6 +25,7 @@ function main()
     end
     rng = MersenneTwister(seed)
 
+    """
     initial_x = ones(lorenz_parameter.num_sites) * lorenz_parameter.F
     # initial_x[20] *= 1.001
     initial_x += randn(rng, 40)
@@ -40,6 +41,7 @@ function main()
 
     # 観測の生成
     observed_X = make_observation_data(X, length(tn), rng)
+    """
 
     # アトラクタ上からランダムな初期値をとる
     # initial_x = get_random_point_on_attractor(rng, lorenz_parameter)
@@ -48,12 +50,37 @@ function main()
     # assignment1_SIR(observed_X, X, X_converted, tn, lorenz_parameter, rng; ensemble_size=100000)
     # assignment1_SIR_anime(observed_X, X, X_converted, tn, lorenz_parameter, rng; ensemble_size=100000, Ne=10, perturb_r=0.5)
     # assignment1_SIR_perturb_vs_ensemble(observed_X, X, X_converted, tn, lorenz_parameter, rng; Ne=100)
-    assignment1_SIR_perturb_vs_Ne(observed_X, X, X_converted, tn, lorenz_parameter, rng; ensemble_size=5000)
+    # assignment1_SIR_perturb_vs_Ne(observed_X, X, X_converted, tn, lorenz_parameter, rng; ensemble_size=5000)
     # assignment1_SIR_anime(observed_X, X, X_converted, tn, lorenz_parameter, rng; ensemble_size=50000, Ne=100, perturb_r=0.05)
     # assignment1_SIR_anime(observed_X, X, X_converted, tn, lorenz_parameter, rng; ensemble_size=50000, Ne=100, perturb_r=5.0)
     # assignment1_SIR(observed_X, X, X_converted, tn, lorenz_parameter, rng; ensemble_size=100000, Ne=10, perturb_r=0.5)
+
+    assignment2_check_TLM_ADJ(lorenz_parameter)
 end
 
+
+function assignment2_check_TLM_ADJ(lorenz_parameter)
+    X0 = zeros(lorenz_parameter.num_sites)
+    X0[20] += 1.0
+
+    dX0 = 0.01 * randn(lorenz_parameter.num_sites)
+
+    # Lorenz-96 TLM and ADJ
+    dV_true = Lorenz96.lorenz_96(X0 + dX0, 0.0, lorenz_parameter) - Lorenz96.lorenz_96(X0, 0.0, lorenz_parameter)
+    Lx = Lorenz96.l96_tlm(X0, dX0)
+    LTLx = Lorenz96.l96_adj(X0, Lx)
+
+    println(stderr, "Lorenz96: dV⋅dV ~= Lx⋅Lx == x⋅LTLx")
+    println(stderr, "$(dV_true ⋅ dV_true) ~= $(Lx ⋅ Lx) == $(dX0 ⋅ LTLx)")
+
+    # Model TLM and ADJ
+    dnX_true = Lorenz96.step(X0 + dX0, 0.0, lorenz_parameter) - Lorenz96.step(X0, 0.0, lorenz_parameter)
+    Mx = Lorenz96.TangentLinearCode(0.0, X0, dX0, lorenz_parameter)
+    MTMx = Lorenz96.AdjointCode(0.0, X0, Mx, lorenz_parameter)
+
+    println(stderr, "Model: dnX⋅dnX ~= Mx⋅Mx == x⋅MTMx")
+    println(stderr, "$(dnX_true ⋅ dnX_true) ~= $(Mx ⋅ Mx) == $(dX0 ⋅ MTMx)")
+end
 
 function assignment1_SIR_perturb_vs_Ne(observed_X, true_X, true_x_converted ,tn, lorenz_parameter, rng; ensemble_size=10000)
     sir_Xa = [Float64[] for i = 1:length(tn)]

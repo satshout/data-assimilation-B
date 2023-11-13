@@ -25,7 +25,7 @@ function main()
     end
     rng = MersenneTwister(seed)
 
-    """
+
     initial_x = ones(lorenz_parameter.num_sites) * lorenz_parameter.F
     # initial_x[20] *= 1.001
     initial_x += randn(rng, 40)
@@ -41,7 +41,7 @@ function main()
 
     # 観測の生成
     observed_X = make_observation_data(X, length(tn), rng)
-    """
+
 
     # アトラクタ上からランダムな初期値をとる
     # initial_x = get_random_point_on_attractor(rng, lorenz_parameter)
@@ -55,15 +55,242 @@ function main()
     # assignment1_SIR_anime(observed_X, X, X_converted, tn, lorenz_parameter, rng; ensemble_size=50000, Ne=100, perturb_r=5.0)
     # assignment1_SIR(observed_X, X, X_converted, tn, lorenz_parameter, rng; ensemble_size=100000, Ne=10, perturb_r=0.5)
 
-    assignment2_check_TLM_ADJ(lorenz_parameter)
+    # assignment2_check_TLM_ADJ(lorenz_parameter, rng)
+    # assignment2_leading_SV(X, 1, tn, lorenz_parameter, rng, perturb_r=5.0)
+    # assignment2_check_Lanczos(X[1], tn[1], lorenz_parameter, rng; itr_max=3000)
+    assignment2_all_SV(X, tn, lorenz_parameter, rng)
 end
 
+function assignment2_all_SV(X, tn, lorenz_parameter, rng)
+    Map = KalmanFilter.get_M_by_approx(X[1], Lorenz96.step, tn[1], lorenz_parameter)
+    Uap, Sap, Vap = KalmanFilter.get_SVD_by_approx(X[1], Lorenz96.step, tn[1], lorenz_parameter)
 
-function assignment2_check_TLM_ADJ(lorenz_parameter)
+    println(stderr, Uap, Sap, Vap)
+    println(stderr, "norm(Uap * Sap * Vap' - Map) = $(norm(Uap * Diagonal(Sap) * Vap' - Map, 2))")
+    println(stderr, size(Uap), size(Sap), size(Vap))
+
+    for k in eachindex(Vap[:, 1])
+        if Vap[k, 1] < 0
+            Vap[k, :] = -Vap[k, :]
+        end
+    end
+
+    heatmap(Vap', color=:cool, clim=(-1, 1), 
+            title="SV by approx", 
+            ylabel="\n Singular Vector", 
+            xlabel="direction", 
+            xticks=[1, 5, 10, 15, 20, 25, 30, 35, 40],
+            yticks=[1, 5, 10, 15, 20, 25, 30, 35, 40],
+            dpi=600, size=(600, 600))
+    savefig("SingularVector_approx.png")
+
+    plot(1:lorenz_parameter.num_sites, ones(lorenz_parameter.num_sites), ylims=(0.3, 2.5),
+         c=:black, linestyle=:dash, label="σ=1.0", 
+         xlabel="i", ylabel="Singular Value", title="sigma_k", 
+         dpi=600, size=(600, 600))
+
+    plot!(1:lorenz_parameter.num_sites, Sap,
+         linewidth=2, marker=:o, markersize=5, 
+         label="approx", c=:blue)
+    
+
+    Stlm, Vtlm = Lorenz96.get_SV_by_Lanczos(X[1], tn[1], lorenz_parameter, rng; itr_max=3000)
+
+    plot!(1:lorenz_parameter.num_sites, Stlm,
+    linewidth=2, marker=:o, markersize=5, 
+    label="TLM", c=:red)
+    
+    savefig("SingularValue_modes.png")
+
+
+    heatmap(Vtlm, color=:cool, clim=(-1, 1), 
+    title="SV by TLM", 
+    ylabel="\n Singular Vector mode", 
+    xlabel="direction", 
+    xticks=[1, 5, 10, 15, 20, 25, 30, 35, 40],
+    yticks=[1, 5, 10, 15, 20, 25, 30, 35, 40],
+    dpi=600, size=(600, 600))
+    savefig("SingularVector_TLM.png")
+
+
+    heatmap(Vap - Vtlm, color=:winter, 
+    title="diff (byApprox - byTLM)", 
+    ylabel="\n Singular Vector mode", 
+    xlabel="direction", 
+    xticks=[1, 5, 10, 15, 20, 25, 30, 35, 40],
+    yticks=[1, 5, 10, 15, 20, 25, 30, 35, 40],
+    dpi=600, size=(600, 600))
+    savefig("SingularVector_diff.png")
+end
+
+function assignment2_check_Lanczos(X0, ti, lorenz_parameter, rng; itr_max=1000)
+
+    V = zeros(Float64, lorenz_parameter.num_sites, lorenz_parameter.num_sites)
+
+    plot(1:itr_max, ones(itr_max) * 1e-16, 
+         yscale=:log10, ylims=(1e-18, 10), yticks=[1e-18, 1e-16, 1e-14, 1e-12, 1e-10, 1e-8, 1e-6, 1e-4, 1e-2, 1e0, 10], 
+         c=:black, linestyle=:dash, label="bottom (1e-16)",
+         xlabel="iteration", ylabel="similarity", title="Lanczos convergence", 
+         dpi=600, size=(600, 600)
+        )
+
+    for i in 1:40
+        println(stderr, "i = $i")
+
+        perturbs = [randn(rng, Float64, lorenz_parameter.num_sites) for _ in 1:100]
+        perturbs = redux_DOF(perturbs, V, i)
+
+        diffs = zeros(Float64, itr_max)
+        print(stderr, "itr = ")
+        for itr in 1:itr_max
+            perturbs = redux_DOF(perturbs, V, i) # avoid numeric noise
+
+            for k in eachindex(perturbs)
+                dX = perturbs[k]
+
+                if dX[1] < 0
+                    dX = -dX
+                end
+
+                Mx = Lorenz96.TangentLinearCode(ti, X0, dX, lorenz_parameter)
+                MTMx = Lorenz96.AdjointCode(ti, X0, Mx, lorenz_parameter)
+
+                perturbs[k] = MTMx / norm(MTMx, 2)
+            end
+
+            diffs[itr] = get_similarity(perturbs)
+        end
+
+        if i in [1, 2, 3, 4, 5, 10, 20, 30, 40]
+            plot!(1:itr_max, diffs, label="mode i = $(i)")
+        end
+
+        V[i, :] = get_mean_vector(perturbs)
+        print(stderr, "\n")
+    end
+
+    println(V[1, :] ⋅ V[2, :])
+
+    savefig("Lanczos_similarity.png")
+
+    S = zeros(Float64, lorenz_parameter.num_sites)
+    for i in 1:40
+        Mv = Lorenz96.TangentLinearCode(ti, X0, V[i, :], lorenz_parameter)
+        MTMv = Lorenz96.AdjointCode(ti, X0, Mv, lorenz_parameter)
+        
+        S_vec = MTMv ./ V[i, :]
+        S[i] = mean(S_vec)
+        plot(1:lorenz_parameter.num_sites, S_vec, title="$i")
+        plot!(1:lorenz_parameter.num_sites, ones(lorenz_parameter.num_sites) * S[i])
+
+        savefig("SingularValue_mode_S_vec$i.png")
+    end
+
+    plot(1:lorenz_parameter.num_sites, ones(lorenz_parameter.num_sites), ylims=(0.3, 2.5),
+    c=:black, linestyle=:dash, label="σ=1.0", 
+    xlabel="i", ylabel="Singular Value", title="sigma_k", 
+    dpi=600, size=(600, 600))
+
+    plot!(1:lorenz_parameter.num_sites, S,
+        linewidth=2, marker=:o, markersize=5, 
+        label="TLM", c=:red)
+
+    savefig("SingularValue_modes_tlm.png")
+
+end
+
+function redux_DOF(perturbs, V, i)
+    if i > 1
+        for k in eachindex(perturbs)
+            for j in 1:i-1
+                perturbs[k] -= (perturbs[k] ⋅ V[j, :]) * V[j, :]
+            end
+        end
+    end
+
+    return perturbs
+end
+
+function get_mean_vector(perturbs)
+    mean_vector = zeros(Float64, length(perturbs[1]))
+    for k in eachindex(perturbs)
+        mean_vector += perturbs[k]
+    end
+
+    mean_vector = mean_vector / length(perturbs)
+
+    return mean_vector / norm(mean_vector, 2)
+end
+
+function get_similarity(perturbs)
+    sim_mat = zeros(Float64, length(perturbs))
+    for k in eachindex(perturbs)
+        if k == 1
+            sim_mat[k] = norm(perturbs[k] - perturbs[end], 2)
+        else
+            sim_mat[k] = norm(perturbs[k] - perturbs[k-1], 2)
+        end
+    end
+
+    return mean(sim_mat)
+end
+
+function assignment2_leading_SV(X, i, tn, lorenz_parameter, rng; perturb_r=1.0)
+    sites = 1:lorenz_parameter.num_sites
+
+    perturbs = [ones(lorenz_parameter.num_sites) for _ in 1:1000]
+
+    for k in eachindex(perturbs)
+        perturbs[k] = perturb_r * randn(rng, lorenz_parameter.num_sites)
+        if perturb[k][1] < 0
+            perturb[k] = -perturb[k]
+        end
+    end
+
+    X0 = X[i]
+
+    for itr in 1:2
+        println(stderr, "itr = $itr")
+
+        plot(sites, X0-X0, ylims=(-5, 5),
+             label="X0", xlabel="site", ylabel="value", title="X0", 
+             dpi=600, size=(600, 600), c=:red)
+
+        for k in eachindex(perturbs)
+            dX = perturbs[k]
+
+            Mx = Lorenz96.TangentLinearCode(tn[i], X0, dX, lorenz_parameter)
+            MTMx = Lorenz96.AdjointCode(tn[i], X0, Mx, lorenz_parameter)
+
+            MTMx = perturb_r * MTMx / norm(MTMx, 2)
+
+            plot!(sites, MTMx, 
+                  c=:cyan, alpha=0.2, width=0.5)
+            
+            perturbs[k] = MTMx
+        end
+
+        plot!(sites, X0-X0, c=:red, width=2,
+             label="X0", xlabel="site", title="t = $(5 * tn[i]) (day); (MTM)^$(itr) dX",
+             legend=false)
+
+        savefig("0_SingularVector_dX.png")
+
+    end
+end
+
+function D(X0, dX, lorenz_parameter)
+    top = norm(Lorenz96.step(X0 + dX, 0.0, lorenz_parameter) - Lorenz96.step(X0, 0.0, lorenz_parameter), 2)
+    bottom = norm(Lorenz96.TangentLinearCode(0.0, X0, dX, lorenz_parameter), 2)
+
+    return top / bottom
+end
+
+function assignment2_check_TLM_ADJ(lorenz_parameter, rng)
     X0 = zeros(lorenz_parameter.num_sites)
     X0[20] += 1.0
 
-    dX0 = 0.01 * randn(lorenz_parameter.num_sites)
+    dX0 = 0.01 * randn(rng, lorenz_parameter.num_sites)
 
     # Lorenz-96 TLM and ADJ
     dV_true = Lorenz96.lorenz_96(X0 + dX0, 0.0, lorenz_parameter) - Lorenz96.lorenz_96(X0, 0.0, lorenz_parameter)
@@ -80,6 +307,36 @@ function assignment2_check_TLM_ADJ(lorenz_parameter)
 
     println(stderr, "Model: dnX⋅dnX ~= Mx⋅Mx == x⋅MTMx")
     println(stderr, "$(dnX_true ⋅ dnX_true) ~= $(Mx ⋅ Mx) == $(dX0 ⋅ MTMx)")
+
+
+    sites = 1:lorenz_parameter.num_sites
+
+    perturbs = [ones(lorenz_parameter.num_sites) for _ in 1:100]
+
+    for k in eachindex(perturbs)
+        perturbs[k] = randn(rng, lorenz_parameter.num_sites)
+    end
+
+    alphas = 0.01:0.01:1
+
+    plot([1], [1], c=RGBA(0, 0, 0, 0), 
+        xlabel="α", ylabel="D(α)", title="TLM check", 
+        legend=false
+        )
+
+    for dX in perturbs
+        y = []
+        for alpha in alphas
+            push!(y, D(X0, alpha * dX, lorenz_parameter))
+        end
+
+        plot!(alphas, y;
+              c=rand(RGB), alpha=0.2, 
+              st=:scatter, markersize=3, width = 0.05)
+    end
+
+    savefig("TLM_check_alpha.png")
+
 end
 
 function assignment1_SIR_perturb_vs_Ne(observed_X, true_X, true_x_converted ,tn, lorenz_parameter, rng; ensemble_size=10000)

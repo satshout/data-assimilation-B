@@ -187,6 +187,12 @@ function get_M_by_approx(x, stepper, t, lorenz_parameter::Main.Lorenz96.Paramete
     return M
 end
 
+function get_SVD_by_approx(x, stepper::Function, t, lorenz_parameter::Main.Lorenz96.Parameter; delta=0.001)
+    M = get_M_by_approx(x, stepper, t, lorenz_parameter; delta=delta)
+    U, S, V = svd(M)
+    return U, S, V
+end
+
 function equation_2(prev_Rho_a, M)
     Rho_f = M * prev_Rho_a * transpose(M)
     return Rho_f

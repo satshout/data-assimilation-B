@@ -1,5 +1,8 @@
 module Lorenz96
 
+using LinearAlgebra
+using StatsBase
+
 struct Parameter
     F::Float64
     num_sites::Int
@@ -184,6 +187,73 @@ function AdjointCode(ti, Xi, dnX, parameter) #入力 = 基本場(xi, yi, zi) + �
     dX += dX_rk0
     
     return dX #出力 = 摂動
+end
+
+function redux_DOF(perturbs, V, i)
+    if i > 1
+        for k in eachindex(perturbs)
+            for j in 1:i-1
+                perturbs[k] -= (perturbs[k] ⋅ V[j, :]) * V[j, :]
+            end
+        end
+    end
+
+    return perturbs
+end
+
+function get_mean_vector(perturbs)
+    mean_vector = zeros(Float64, length(perturbs[1]))
+    for k in eachindex(perturbs)
+        mean_vector += perturbs[k]
+    end
+
+    mean_vector = mean_vector / length(perturbs)
+
+    return mean_vector / norm(mean_vector, 2)
+end
+
+function get_SV_by_Lanczos(X0, ti, lorenz_parameter, rng; itr_max=1000, ens_size=100)
+
+    V = zeros(Float64, lorenz_parameter.num_sites, lorenz_parameter.num_sites)
+
+    for i in 1:40
+        println(stderr, "i = $i")
+
+        perturbs = [randn(rng, Float64, lorenz_parameter.num_sites) for _ in 1:ens_size]
+        perturbs = redux_DOF(perturbs, V, i)
+
+        for itr in 1:itr_max
+            perturbs = redux_DOF(perturbs, V, i) # avoid numeric noise
+
+            for k in eachindex(perturbs)
+                dX = perturbs[k]
+
+                if dX[1] < 0
+                    dX = -dX
+                end
+
+                Mx = Lorenz96.TangentLinearCode(ti, X0, dX, lorenz_parameter)
+                MTMx = Lorenz96.AdjointCode(ti, X0, Mx, lorenz_parameter)
+
+                perturbs[k] = MTMx / norm(MTMx, 2)
+            end
+
+        end
+
+        V[i, :] = get_mean_vector(perturbs)
+    end
+
+    S = zeros(Float64, lorenz_parameter.num_sites)
+    for i in 1:40
+        Mv = Lorenz96.TangentLinearCode(ti, X0, V[i, :], lorenz_parameter)
+        MTMv = Lorenz96.AdjointCode(ti, X0, Mv, lorenz_parameter)
+        
+        S_vec = MTMv ./ V[i, :]
+        S[i] = mean(S_vec)
+    end
+
+    return S, V
+
 end
 
 end

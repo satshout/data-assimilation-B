@@ -31,8 +31,8 @@ function main()
     initial_x += randn(rng, 40)
     Start = 365 / 5
     # Goal = 380 / 5
-    # Goal = 395 / 5
-    Goal = 365 * 2 / 5
+    Goal = 400 / 5
+    # Goal = 365 * 2 / 5
 
     # 真値の生成
     X = get_true_state(lorenz_parameter, initial_x, Start, Goal)
@@ -46,7 +46,7 @@ function main()
     # アトラクタ上からランダムな初期値をとる
     # initial_x = get_random_point_on_attractor(rng, lorenz_parameter)
 
-    # assignment1_SIS(observed_X, X, X_converted, tn, lorenz_parameter, rng; ensemble_size=1000)
+    # assignment1_SIS(observed_X, X, X_converted, tn, lorenz_parameter, rng; ensemble_size=100000)
     # assignment1_SIR(observed_X, X, X_converted, tn, lorenz_parameter, rng; ensemble_size=100000)
     # assignment1_SIR_anime(observed_X, X, X_converted, tn, lorenz_parameter, rng; ensemble_size=100000, Ne=10, perturb_r=0.5)
     # assignment1_SIR_perturb_vs_ensemble(observed_X, X, X_converted, tn, lorenz_parameter, rng; Ne=100)
@@ -58,46 +58,297 @@ function main()
     # assignment2_check_TLM_ADJ(lorenz_parameter, rng)
     # assignment2_leading_SV(X, 1, tn, lorenz_parameter, rng, perturb_r=5.0)
     # assignment2_check_Lanczos(X[1], tn[1], lorenz_parameter, rng; itr_max=3000)
-    assignment2_all_SV(X, tn, lorenz_parameter, rng)
+    # assignment2_all_SV(X, tn, lorenz_parameter, rng)
+
+    assignment3_check_LV(X, tn[1:80], lorenz_parameter, rng; alpha=2.0)
+    assignment3_check_BV(X, tn[1:80], lorenz_parameter, rng; alpha=2.0)
 end
+
+function assignment3_check_BV(X, tn, lorenz_parameter, rng ;alpha=0.9, ens_size=100)
+    perturbs = get_random_perturb(rng, lorenz_parameter.num_sites, ens_size, 1)
+
+    diffs1   = zeros(Float64, ens_size, 2 * length(tn) - 1)
+    diffsabs = zeros(Float64, ens_size, 2 * length(tn) - 1)
+    for k in eachindex(perturbs)
+        dX = perturbs[k]
+        dX = Lorenz96.TangentLinearCode(tn[1], X[1], dX, lorenz_parameter)
+
+        diffs1[k, 1]   = X[1][1] + dX[1]
+        diffsabs[k, 1] = norm(dX, 2)
+    end
+
+    similarity = zeros(Float64, length(tn))
+    similarity[1] = get_similarity(perturbs)
+
+    for i in eachindex(tn[begin:end-1])
+        print(stderr, "i = $i, ")
+        for k in eachindex(perturbs)
+            print(stderr, "$k, ")
+            dX = perturbs[k]
+            dX = Lorenz96.step(X[i] + dX, tn[i], lorenz_parameter) - X[i+1]
+
+            diffs1[k, 2*i]   = X[i][1] + dX[1]       # grow
+            diffsabs[k, 2*i] = norm(dX, 2) # grow
+
+            if norm(dX, 2) > alpha
+                perturbs[k] = alpha * dX / norm(dX, 2)
+            else
+                perturbs[k] = dX
+            end
+
+            diffs1[k, 2*i + 1]   = X[i][1] + perturbs[k][1]       # grow
+            diffsabs[k, 2*i + 1] = norm(perturbs[k], 2) # grow
+        end
+
+        similarity[i+1] = get_similarity(perturbs)
+        print(stderr, "\n")
+        println(stderr, perturbs[1])
+    end
+
+    plot(tn*5, ones(length(tn)) * alpha, 
+         c=:blue, linestyle=:dash, label="alpha = $alpha",
+         # yscale=:log10, ylims=(1e-18, 10), yticks=[1e-18, 1e-16, 1e-14, 1e-12, 1e-10, 1e-8, 1e-6, 1e-4, 1e-2, 1e0, 10], 
+         xlabel="Time [days]", ylabel="similarity", title="Bred Vector convergence; α=$alpha", 
+         dpi=600, size=(600, 600)
+        )
+    plot!(tn*5, zeros(length(tn)), 
+          c=:black, linestyle=:dash,
+         )
+    plot!(tn*5, similarity, 
+          c=:red, label="similarity"
+          )
+    savefig("BV_similarity_$alpha.png")
+    println(stderr, "similarity done.")
+
+    tnidx = [tn[1]*5]
+    for i in eachindex(tn)
+        if i == 1
+            continue
+        end
+        push!(tnidx, 5*tn[i])
+        push!(tnidx, 5*tn[i])
+    end
+
+    println("$(size(tnidx))), $(size(diffs1))")
+
+    X_converted = convert_matrix(X[1:length(tn)])
+    plot(tn*5, X_converted[1, :], 
+         c=:black, label="Trajectory",
+         xlabel="Time [days]", ylabel="1st site value x1", title="Bred Vector growth (x1); α=$alpha", 
+         dpi=600, size=(600, 600), legend=false
+        )
+    for k in eachindex(perturbs)
+        plot!(tnidx, diffs1[k, :], 
+              c=:red, alpha=0.2, width=0.5)
+    end
+    println(stderr, "$((diffs1[1, 1], diffs1[10, 10], diffs1[20, 20]))")
+    savefig("BV_x1_$alpha.png")
+    println(stderr, "x1 done.")
+
+    plot(tn*5, ones(length(tn)) * alpha, 
+         c=:blue, label="alpha = $alpha",
+         xlabel="Time [days]", ylabel="abs |X|", title="Bred Vector growth (abs |X|); α=$alpha", 
+         dpi=600, size=(600, 600), legend=false
+        )
+    for k in eachindex(perturbs)
+        plot!(tnidx, diffsabs[k, :], 
+              c=:red, alpha=0.2, width=0.5)
+    end
+    println(stderr, "$((diffsabs[1, 1], diffsabs[10, 10], diffsabs[20, 20]))")
+    savefig("BV_abs_x_$alpha.png")
+    println(stderr, "abs x done.")
+
+    for k in eachindex(perturbs)
+        if perturbs[k][40] < 0
+            perturbs[k] = -perturbs[k]
+        end
+
+        perturbs[k] = perturbs[k] / norm(perturbs[k], 2)
+    end
+    p_converted = convert_matrix(perturbs)
+    heatmap(transpose(p_converted), color=:matter, 
+            title="Bred Vector; α=$alpha, time=day $(tn[end]*5)", 
+            ylabel="\n Ensemble member", 
+            xlabel="site", 
+            xticks=[1, 5, 10, 15, 20, 25, 30, 35, 40],
+            yticks=[1, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100],
+            # aspect_ratio=:equal, 
+            right_margin = 10Plots.mm,
+            dpi=600, size=(625, 600))
+    savefig("BVs_heatmap_$alpha.png")
+    println(stderr, "heatmap done.")
+
+end
+
+function assignment3_check_LV(X, tn, lorenz_parameter, rng ;alpha=0.9, ens_size=100)
+    perturbs = get_random_perturb(rng, lorenz_parameter.num_sites, ens_size, 1)
+
+    diffs1   = zeros(Float64, ens_size, 2 * length(tn) - 1)
+    diffsabs = zeros(Float64, ens_size, 2 * length(tn) - 1)
+    for k in eachindex(perturbs)
+        dX = perturbs[k]
+        dX = Lorenz96.TangentLinearCode(tn[1], X[1], dX, lorenz_parameter)
+
+        diffs1[k, 1]   = X[1][1] + dX[1]
+        diffsabs[k, 1] = norm(dX, 2)
+    end
+
+    similarity = zeros(Float64, length(tn))
+    similarity[1] = get_similarity(perturbs)
+
+    for i in eachindex(tn[begin:end-1])
+        print(stderr, "i = $i, ")
+        for k in eachindex(perturbs)
+            print(stderr, "$k, ")
+            dX = perturbs[k]
+            dX = Lorenz96.TangentLinearCode(tn[i], X[i], dX, lorenz_parameter)
+
+            diffs1[k, 2*i]   = X[i][1] + dX[1]       # grow
+            diffsabs[k, 2*i] = norm(dX, 2) # grow
+
+            if norm(dX, 2) > alpha
+                perturbs[k] = alpha * dX / norm(dX, 2)
+            else
+                perturbs[k] = dX
+            end
+
+            diffs1[k, 2*i + 1]   = X[i][1] + perturbs[k][1]       # grow
+            diffsabs[k, 2*i + 1] = norm(perturbs[k], 2) # grow
+        end
+
+        similarity[i+1] = get_similarity(perturbs)
+        print(stderr, "\n")
+        println(stderr, perturbs[1])
+    end
+
+    plot(tn*5, ones(length(tn)) * alpha, 
+         c=:blue, linestyle=:dash, label="alpha = $alpha",
+         # yscale=:log10, ylims=(1e-18, 10), yticks=[1e-18, 1e-16, 1e-14, 1e-12, 1e-10, 1e-8, 1e-6, 1e-4, 1e-2, 1e0, 10], 
+         xlabel="Time [days]", ylabel="similarity", title="Lyapnov Vector convergence; α=$alpha", 
+         dpi=600, size=(600, 600)
+        )
+    plot!(tn*5, zeros(length(tn)), 
+          c=:black, linestyle=:dash,
+         )
+    plot!(tn*5, similarity, 
+          c=:red, label="similarity"
+          )
+    savefig("LV_similarity_$alpha.png")
+    println(stderr, "similarity done.")
+
+    tnidx = [tn[1]*5]
+    for i in eachindex(tn)
+        if i == 1
+            continue
+        end
+        push!(tnidx, 5*tn[i])
+        push!(tnidx, 5*tn[i])
+    end
+
+    println("$(size(tnidx))), $(size(diffs1))")
+
+    X_converted = convert_matrix(X[1:length(tn)])
+    plot(tn*5, X_converted[1, :], 
+         c=:black, label="Trajectory",
+         xlabel="Time [days]", ylabel="1st site value x1", title="Lyapnov Vector growth (x1); α=$alpha", 
+         dpi=600, size=(600, 600), legend=false
+        )
+    for k in eachindex(perturbs)
+        plot!(tnidx, diffs1[k, :], 
+              c=:red, alpha=0.2, width=0.5)
+    end
+    println(stderr, "$((diffs1[1, 1], diffs1[10, 10], diffs1[20, 20]))")
+    savefig("LV_x1_$alpha.png")
+    println(stderr, "x1 done.")
+
+    plot(tn*5, ones(length(tn)) * alpha, 
+         c=:blue, label="alpha = $alpha",
+         xlabel="Time [days]", ylabel="abs |X|", title="Lyapnov Vector growth (abs |X|); α=$alpha", 
+         dpi=600, size=(600, 600), legend=false
+        )
+    for k in eachindex(perturbs)
+        plot!(tnidx, diffsabs[k, :], 
+              c=:red, alpha=0.2, width=0.5)
+    end
+    println(stderr, "$((diffsabs[1, 1], diffsabs[10, 10], diffsabs[20, 20]))")
+    savefig("LV_abs_x_$alpha.png")
+    println(stderr, "abs x done.")
+
+    for k in eachindex(perturbs)
+        if perturbs[k][40] < 0
+            perturbs[k] = -perturbs[k]
+        end
+
+        perturbs[k] = perturbs[k] / norm(perturbs[k], 2)
+    end
+    p_converted = convert_matrix(perturbs)
+    heatmap(transpose(p_converted), color=:matter, 
+            title="Lyapnov Vector; α=$alpha, time=day $(tn[end]*5)", 
+            ylabel="\n Ensemble member", 
+            xlabel="site", 
+            xticks=[1, 5, 10, 15, 20, 25, 30, 35, 40],
+            yticks=[1, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100],
+            # aspect_ratio=:equal, 
+            right_margin = 10Plots.mm,
+            dpi=600, size=(625, 600))
+    savefig("LVs_heatmap_$alpha.png")
+    println(stderr, "heatmap done.")
+
+end
+
+function get_random_perturb(rng, dimension, ens_size, perturb_r)
+    perturb = [randn(rng, Float64, dimension) for _ in 1:ens_size]
+    for k in eachindex(perturb)
+        perturb[k] = perturb_r * perturb[k] / norm(perturb[k], 2)
+    end
+
+    return perturb
+end
+
 
 function assignment2_all_SV(X, tn, lorenz_parameter, rng)
     Map = KalmanFilter.get_M_by_approx(X[1], Lorenz96.step, tn[1], lorenz_parameter)
     Uap, Sap, Vap = KalmanFilter.get_SVD_by_approx(X[1], Lorenz96.step, tn[1], lorenz_parameter)
 
     println(stderr, Uap, Sap, Vap)
-    println(stderr, "norm(Uap * Sap * Vap' - Map) = $(norm(Uap * Diagonal(Sap) * Vap' - Map, 2))")
+    println(stderr, "norm(Uap * Sap * Vap' - Map' * Map) = $(norm(Uap * Diagonal(Sap) * Vap' - Map' * Map, 2))")
     println(stderr, size(Uap), size(Sap), size(Vap))
+    println(stderr, Sap[1])
+    println(stderr, Vap[1, 1])
 
-    for k in eachindex(Vap[:, 1])
-        if Vap[k, 1] < 0
-            Vap[k, :] = -Vap[k, :]
+    VapT = Vap'
+
+    for k in eachindex(VapT[:, 1])
+        if VapT[k, 1] < 0
+            VapT[k, :] = -VapT[k, :]
         end
     end
 
-    heatmap(Vap', color=:cool, clim=(-1, 1), 
+    heatmap(VapT, color=:cool, clim=(-1, 1), 
             title="SV by approx", 
             ylabel="\n Singular Vector", 
             xlabel="direction", 
             xticks=[1, 5, 10, 15, 20, 25, 30, 35, 40],
             yticks=[1, 5, 10, 15, 20, 25, 30, 35, 40],
-            dpi=600, size=(600, 600))
+            aspect_ratio=:equal, 
+            right_margin = 10Plots.mm,
+            dpi=600, size=(625, 600))
     savefig("SingularVector_approx.png")
 
-    plot(1:lorenz_parameter.num_sites, ones(lorenz_parameter.num_sites), ylims=(0.3, 2.5),
+    plot(1:lorenz_parameter.num_sites, ones(lorenz_parameter.num_sites), ylims=(0.5, 1.6),
          c=:black, linestyle=:dash, label="σ=1.0", 
          xlabel="i", ylabel="Singular Value", title="sigma_k", 
          dpi=600, size=(600, 600))
 
-    plot!(1:lorenz_parameter.num_sites, Sap,
-         linewidth=2, marker=:o, markersize=5, 
+    plot!(1:lorenz_parameter.num_sites, sqrt.(Sap),
+         linewidth=2, marker=:x, markersize=5, 
          label="approx", c=:blue)
     
 
     Stlm, Vtlm = Lorenz96.get_SV_by_Lanczos(X[1], tn[1], lorenz_parameter, rng; itr_max=3000)
 
-    plot!(1:lorenz_parameter.num_sites, Stlm,
-    linewidth=2, marker=:o, markersize=5, 
+    plot!(1:lorenz_parameter.num_sites, sqrt.(Stlm),
+    linewidth=1, marker=:+, markersize=5, 
     label="TLM", c=:red)
     
     savefig("SingularValue_modes.png")
@@ -109,19 +360,24 @@ function assignment2_all_SV(X, tn, lorenz_parameter, rng)
     xlabel="direction", 
     xticks=[1, 5, 10, 15, 20, 25, 30, 35, 40],
     yticks=[1, 5, 10, 15, 20, 25, 30, 35, 40],
-    dpi=600, size=(600, 600))
+    aspect_ratio=:equal, 
+    right_margin = 10Plots.mm,
+    dpi=600, size=(625, 600))
     savefig("SingularVector_TLM.png")
 
 
-    heatmap(Vap - Vtlm, color=:winter, 
+    heatmap(VapT - Vtlm, color=:winter, 
     title="diff (byApprox - byTLM)", 
     ylabel="\n Singular Vector mode", 
     xlabel="direction", 
     xticks=[1, 5, 10, 15, 20, 25, 30, 35, 40],
     yticks=[1, 5, 10, 15, 20, 25, 30, 35, 40],
-    dpi=600, size=(600, 600))
+    aspect_ratio=:equal, 
+    right_margin = 10Plots.mm,
+    dpi=600, size=(625, 600))
     savefig("SingularVector_diff.png")
 end
+
 
 function assignment2_check_Lanczos(X0, ti, lorenz_parameter, rng; itr_max=1000)
 

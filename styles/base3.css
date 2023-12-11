@@ -1,0 +1,289 @@
+/* @theme base3 */
+@import "gaia";
+@import url('https://fonts.googleapis.com/css2?family=Source+Code+Pro&display=swap');
+
+
+/* theme default color scheme
+default:
+    nothing in particular
+
+gaia: 
+  --color-background
+  --color-background-code
+  --color-foreground      (= <p> text color)
+  --color-highlight       (= <strong> color)
+
+uncover:
+@mixin color-scheme($bg: #fdfcff, $text: #202228, $highlight: #009dd5) {
+  --color-background         : #{$bg};
+  --color-background-code    : #{color.mix($bg, $text, 95%)};
+  --color-background-paginate: #{rgba($text, 0.05)};
+  --color-foreground         : #{$text};
+  --color-highlight          : #{$highlight};
+  --color-highlight-hover    : #{color.mix($text, $highlight, 25%)};
+  --color-highlight-heading  : #{color.mix(#fff, $highlight, 20%)};
+  --color-header             : #{rgba($text, 0.4)};
+  --color-header-shadow      : #{rgba($bg, 0.8)};
+}
+*/
+
+:root {
+    --white    : rgb(255, 255, 255);
+    --black    : rgb(73, 89, 99); /* text color of gaia theme */
+    --gray     : rgb(40, 40, 40);
+    --primary  : rgb(2, 136, 209);
+    --secondary: rgb(129, 212, 250);
+
+    --h1-font-size           : 50px;
+    --h2-font-size           : 45px;
+    --h3-font-size           : 40px;
+    --h4-font-size           : 35px;
+    --header-footer-font-size: 20px;
+    --main-font-size         : 30px;
+    --font-weight-light      : 200;
+    --font-weight-normal     : 400;
+    --font-weight-bold       : 700;
+    --normal-border-radius   : 5px;
+    --root-font-family       : 'Segoe WPC', 'Segoe UI', system-ui, 'Ubuntu', 'Droid Sans', sans-serif;
+    font-family              : var(--root-font-family);
+}
+
+section {
+    --color-background: var(--white);
+    --color-highlight : var(--primary);
+
+    padding           : 60px 40px 10px 40px;
+    font-size         : var(--main-font-size);
+    font-weight       : var(--font-weight-normal);
+}
+
+section.invert {
+    --color-background: var(--gray);
+    --color-highlight : var(--secondary);
+
+    --lead-h1-font-size      : 70px;
+    --lead-h2-font-size      : 50px;
+    --lead-h3-font-size      : 45px;
+    --lead-h4-font-size      : 40px;
+    --header-footer-font-size:  0px;
+}
+
+section.invert h1 {
+    font-size : var(--lead-h1-font-size);
+    margin    : 100px auto 50px;
+    border    : 0;
+    text-align: center;
+}
+
+section.invert h2 {
+    font-size : var(--lead-h2-font-size);
+    margin    : 0 auto 50px;
+    text-align: center;
+}
+
+section.invert h3 {
+    font-size : var(--lead-h3-font-size);
+    margin    : 0 auto 50px;
+    text-align: center;
+}
+
+section.invert h4 {
+    font-size    : var(--lead-h4-font-size);
+    margin       : 0 auto 50px;
+    text-align   : center;
+    border-bottom: 2px solid var(--white);
+    width        : 40%;
+}
+
+header {
+    width    : 100%;
+    font-size: var(--header-footer-font-size);
+    height   : 50px;
+}
+
+footer {
+    width         : 100%;
+    text-align    : left;
+    padding-bottom: 0;
+    font-size     : var(--header-footer-font-size);
+    height        : 50px;
+}
+
+code {
+    font-family: 'Source Code Pro', monospace;
+}
+
+section h1 {
+    font-size    : var(--h1-font-size);
+    border-bottom: 2px solid var(--black);
+    margin-bottom: 10px;
+}
+
+section h2 {
+    font-size  : var(--h2-font-size);
+    font-weight: var(--font-weight-normal);
+}
+
+section h3 {
+    font-size  : var(--h3-font-size);
+    font-weight: var(--font-weight-normal);
+}
+
+section h4 {
+    margin-bottom: -24px;
+
+    font-size  : var(--h4-font-size);
+    font-weight: var(--font-weight-normal);
+}
+
+section h5 {
+    margin-bottom: -24px;
+}
+
+section p img {
+    display      : block;
+    margin       : 0 auto;
+    border-radius: var(--normal-border-radius);
+}
+
+section pre {
+    border-radius: var(--normal-border-radius);
+    border       : var(--black) 1px solid;
+}
+
+section ul,
+ol {
+    padding-left: 40px;
+}
+
+/* 落合フォーマットのスタイル定義 */
+section ochiyai {
+    columns      : 1;
+
+    padding         : 60px 40px 10px 40px;
+
+    font-size    : 24px;
+    font-weight  : var(--font-weight-normal);
+}
+
+/* 論文タイトルなど */
+section.ochiyai h1 {
+    columns      : 1;
+
+    border-bottom: none;
+
+    text-align   : center;
+    font-size    : 32px;
+    font-weight  : var(--font-weight-bold);
+}
+
+section.ochiyai h2 {
+    columns      : 1;
+
+    border-bottom: none;
+
+    text-align   : center;
+    font-size    : 28px;
+    font-weight  : var(--font-weight-bold);
+}
+
+/* 論文著者名など (中央揃え) */
+section.ochiyai h3 {
+    columns      : 1;
+
+    text-align   : center;
+    font-size    : 24px;
+    font-weight  : var(--font-weight-normal);
+}
+
+/* 落合フォーマットの本文ボックス (codeを改造) */
+section.ochiyai code {
+    columns      : 2;
+    column-rule  : 2px dashed #ccc;
+    column-gap   : 3em;
+
+    background   : var(--white);
+    color        : var(--black);
+    width        : 100%;
+    padding      : 0 auto;
+    margin-top   : 20px;
+
+    text-align   : justify;
+    line-height  : 1.5;
+    font-family  : var(--root-font-family);
+    font-size    : 24px;
+    font-weight  : var(--font-weight-normal);
+}
+
+/* 落合フォーマット の注目ポイント */
+section.ochiyai code h2 {
+    columns      : 1;
+
+    padding      : 0 auto;
+    border       : 2px solid var(--black);
+    border-radius: 20px;
+    margin       : 0 auto;
+
+    text-align   : center;
+    line-height  : 2;
+    font-size    : 28px;
+    font-weight  : var(--font-weight-normal);
+}
+
+/* 落合フォーマット の本文 */
+section.ochiyai code p {
+    margin-top   : 10px;
+    margin-bottom: 20px;
+}
+
+/* Chapter Head Slide (Simple) */
+section.chap_head {
+    color      : var(--black);
+    font-size  : var(--main-font-size);
+    font-weight: var(--font-weight-normal);
+    width      : 100%;
+    height     : 100%;
+}
+
+section.chap_head h1 {
+    /* Underline is always at vertical center */
+    position: absolute;
+    bottom  : 50%;
+    left    : 0;
+    right   : 0;
+
+    columns : 1;
+    color   : var(--primary);
+
+    /* Text is always at horizontal center */
+    margin: 0 auto;
+    width : 80%;
+
+    text-align : center;
+    font-size  : 64px;
+    font-weight: var(--font-weight-bold);
+}
+
+section.chap_head h2 {
+    /* Underline is always at vertical center */
+    position: absolute;
+    top     : 50%;
+    left    : 0;
+    right   : 0;
+
+    columns : 1;
+    color   : var(--black);
+
+    /* Text is always at horizontal center */
+    margin: 0 auto;
+    width : 80%;
+
+    text-align : center;
+    font-size  : 52px;
+    font-weight: var(--font-weight-bold);
+}
+
+/* --- SAND BOX BELOW ------------------------ */
+section.test {
+    font-size : 10px;
+}

@@ -189,7 +189,7 @@ end
 
 function get_SVD_by_approx(x, stepper::Function, t, lorenz_parameter::Main.Lorenz96.Parameter; delta=0.001)
     M = get_M_by_approx(x, stepper, t, lorenz_parameter; delta=delta)
-    U, S, V = svd(M)
+    U, S, V = svd(M' * M)
     return U, S, V
 end
 

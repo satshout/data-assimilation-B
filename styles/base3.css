@@ -63,7 +63,7 @@ section.invert {
 
     --lead-h1-font-size      : 70px;
     --lead-h2-font-size      : 50px;
-    --lead-h3-font-size      : 45px;
+    --lead-h3-font-size      : 40px;
     --lead-h4-font-size      : 40px;
     --header-footer-font-size:  0px;
 }
@@ -83,7 +83,7 @@ section.invert h2 {
 
 section.invert h3 {
     font-size : var(--lead-h3-font-size);
-    margin    : 0 auto 50px;
+    margin    : -50px auto 50px;
     text-align: center;
 }
 

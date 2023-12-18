@@ -60,8 +60,341 @@ function main()
     # assignment2_check_Lanczos(X[1], tn[1], lorenz_parameter, rng; itr_max=3000)
     # assignment2_all_SV(X, tn, lorenz_parameter, rng)
 
-    assignment3_check_LV(X, tn[1:80], lorenz_parameter, rng; alpha=2.0)
-    assignment3_check_BV(X, tn[1:80], lorenz_parameter, rng; alpha=2.0)
+    # assignment3_check_LV(X, tn[1:80], lorenz_parameter, rng; alpha=2.0)
+    # assignment3_check_BV(X, tn[1:80], lorenz_parameter, rng; alpha=2.0)
+
+    assignment2_check_Ms(X, tn, lorenz_parameter, rng)
+end
+
+function assignment2_check_Ms(X, tn, lorenz_parameter, rng)
+    Map = KalmanFilter.get_M_by_approx(X[1], Lorenz96.step, tn[1], lorenz_parameter)
+
+    heatmap(Map, color=:cool, clim=(-1.5, 1.5), 
+            title="M_approx", 
+            ylabel="\n #th Vector", 
+            xlabel="#th site", 
+            xticks=[1, 5, 10, 15, 20, 25, 30, 35, 40],
+            yticks=[1, 5, 10, 15, 20, 25, 30, 35, 40], yflip=true,
+            aspect_ratio=:equal, 
+            right_margin = 10Plots.mm,
+            dpi=600, size=(625, 600))
+    savefig("./1212/M_approx.png")
+
+    # SVD(Map)
+    svdM = svd(Map)
+    println(stderr, "svd(M)")
+    # println(stderr, svdM.U, svdM.S, svdM.V)
+    println(stderr, "norm(svdM.U * svdM.S * svdM.V' - Map) = $(norm(svdM.U * Diagonal(svdM.S) * svdM.V' - Map, 2))")
+    println(stderr, size(svdM.U), size(svdM.S), size(svdM.V))
+    println(stderr, svdM.S[1])
+    println(stderr, svdM.V[1, 1])
+
+    heatmap(svdM.U, color=:cool, clim=(-1.5, 1.5), 
+            title="svd(M_ap) U", 
+            xlabel="\n #th Left Singular Vector mode", 
+            ylabel="#th site", 
+            xticks=[1, 5, 10, 15, 20, 25, 30, 35, 40],
+            yticks=[1, 5, 10, 15, 20, 25, 30, 35, 40], yflip=true,
+            aspect_ratio=:equal, 
+            right_margin = 10Plots.mm,
+            dpi=600, size=(625, 600))
+    savefig("./1212/svdM_U.png")
+
+    heatmap(Diagonal(svdM.S), color=:cool, clim=(-1.5, 1.5), 
+            title="svd(M_ap) diag(S)", 
+            ylabel="\n #th Value σ", 
+            xlabel="#th Value σ", 
+            xticks=[1, 5, 10, 15, 20, 25, 30, 35, 40],
+            yticks=[1, 5, 10, 15, 20, 25, 30, 35, 40], yflip=true,
+            aspect_ratio=:equal, 
+            right_margin = 10Plots.mm,
+            dpi=600, size=(625, 600))
+    savefig("./1212/svdM_diagS.png")
+
+    heatmap(svdM.V', color=:cool, clim=(-1.5, 1.5), 
+            title="svd(M_ap) VT", 
+            ylabel="\n #th Right Singular Vector mode", 
+            xlabel="#th site", 
+            xticks=[1, 5, 10, 15, 20, 25, 30, 35, 40],
+            yticks=[1, 5, 10, 15, 20, 25, 30, 35, 40], yflip=true,
+            aspect_ratio=:equal, 
+            right_margin = 10Plots.mm,
+            dpi=600, size=(625, 600))
+    savefig("./1212/svdM_VT.png")
+
+    heatmap(svdM.U * Diagonal(svdM.S) * svdM.V', color=:cool, clim=(-1.5, 1.5), 
+    title="U⋅S⋅VT",
+    ylabel="\n #th Vector", 
+    xlabel="#th site", 
+    xticks=[1, 5, 10, 15, 20, 25, 30, 35, 40],
+    yticks=[1, 5, 10, 15, 20, 25, 30, 35, 40], yflip=true,
+    aspect_ratio=:equal, 
+    right_margin = 10Plots.mm,
+    dpi=600, size=(625, 600))
+    savefig("./1212/svdM_check.png")
+
+    # SVD(MapT⋅Map)
+    svdMTM = svd(Map' * Map)
+
+    println(stderr, "svd(MT⋅M)")
+    # println(stderr, svdMTM.U, svdMTM.S, svdMTM.V)
+    println(stderr, "norm(svdMTM.U * svdMTM.S * svdMTM.V' - Map' * Map) = $(norm(svdMTM.U * Diagonal(svdMTM.S) * svdMTM.V' - Map' * Map, 2))")
+    println(stderr, size(svdMTM.U), size(svdMTM.S), size(svdMTM.V))
+
+    println(stderr, "!!!!!!! U ?= V ---> norm(U - V) == $(norm(svdMTM.U - svdMTM.V'))")
+
+    heatmap(Map' * Map, color=:cool, clim=(-1.5, 1.5), 
+            title="M_approx", 
+            ylabel="\n #th Vector", 
+            xlabel="#th site", 
+            xticks=[1, 5, 10, 15, 20, 25, 30, 35, 40],
+            yticks=[1, 5, 10, 15, 20, 25, 30, 35, 40], yflip=true,
+            aspect_ratio=:equal, 
+            right_margin = 10Plots.mm,
+            dpi=600, size=(625, 600))
+    savefig("./1212/MTM_approx.png")
+
+    heatmap(svdMTM.U, color=:cool, clim=(-1.5, 1.5), 
+            title="svd(MT⋅M) U", 
+            xlabel="\n #th Left Singular Vector mode", 
+            ylabel="#th site", 
+            xticks=[1, 5, 10, 15, 20, 25, 30, 35, 40],
+            yticks=[1, 5, 10, 15, 20, 25, 30, 35, 40], yflip=true,
+            aspect_ratio=:equal, 
+            right_margin = 10Plots.mm,
+            dpi=600, size=(625, 600))
+    savefig("./1212/svdMTM_U.png")
+
+    heatmap(Diagonal(svdMTM.S), color=:cool, clim=(-1.5, 1.5), 
+            title="svd(MT⋅M) diag(S)", 
+            ylabel="\n #th Value σ", 
+            xlabel="#th Value σ", 
+            xticks=[1, 5, 10, 15, 20, 25, 30, 35, 40],
+            yticks=[1, 5, 10, 15, 20, 25, 30, 35, 40], yflip=true,
+            aspect_ratio=:equal, 
+            right_margin = 10Plots.mm,
+            dpi=600, size=(625, 600))
+    savefig("./1212/svdMTM_diagS.png")
+
+    heatmap(svdMTM.V', color=:cool, clim=(-1.5, 1.5), 
+            title="svd(MT⋅M) VT", 
+            ylabel="\n #th Right Singular Vector mode", 
+            xlabel="#th site", 
+            xticks=[1, 5, 10, 15, 20, 25, 30, 35, 40],
+            yticks=[1, 5, 10, 15, 20, 25, 30, 35, 40], yflip=true,
+            aspect_ratio=:equal, 
+            right_margin = 10Plots.mm,
+            dpi=600, size=(625, 600))
+    savefig("./1212/svdMTM_VT.png")
+
+    heatmap(svdMTM.U * Diagonal(svdMTM.S) * svdMTM.V', color=:cool, clim=(-1.5, 1.5),
+            title="U⋅S⋅VT",
+            ylabel="\n #th Vector",
+            xlabel="#th site",
+            xticks=[1, 5, 10, 15, 20, 25, 30, 35, 40],
+            yticks=[1, 5, 10, 15, 20, 25, 30, 35, 40], yflip=true,
+            aspect_ratio=:equal,
+            right_margin = 10Plots.mm,
+            dpi=600, size=(625, 600))
+    savefig("./1212/svdMTM_check.png")
+
+    # Eigen(MapT⋅Map)
+    eigenMTM = eigen(Map' * Map)
+    reverse!(eigenMTM.vectors, dims=2)
+    reverse!(eigenMTM.values)
+
+    println(stderr, "eigen(MT⋅M)")
+    # println(stderr, eigenMTM.vectors, eigenMTM.values)
+    println(stderr, size(eigenMTM.vectors), size(eigenMTM.values))
+
+    heatmap(eigenMTM.vectors, color=:cool, clim=(-1.5, 1.5), 
+            title="eigen(MT⋅M) vectors", 
+            ylabel="\n #th Eigen Vector mode", 
+            xlabel="#th site", 
+            xticks=[1, 5, 10, 15, 20, 25, 30, 35, 40], 
+            yticks=[1, 5, 10, 15, 20, 25, 30, 35, 40], yflip=true,
+            aspect_ratio=:equal,
+            right_margin = 10Plots.mm,
+            dpi=600, size=(625, 600))
+    savefig("./1212/eigenMTM_vectors.png")
+
+    heatmap(Diagonal(eigenMTM.values), color=:cool, clim=(-1.5, 1.5), 
+            title="eigen(MT⋅M) values", 
+            ylabel="\n #th Value λ", 
+            xlabel="#th Value λ", 
+            xticks=[1, 5, 10, 15, 20, 25, 30, 35, 40], 
+            yticks=[1, 5, 10, 15, 20, 25, 30, 35, 40], yflip=true,
+            aspect_ratio=:equal,
+            right_margin = 10Plots.mm,
+            dpi=600, size=(625, 600))
+    savefig("./1212/eigenMTM_values.png")
+
+    heatmap(eigenMTM.vectors * Diagonal(eigenMTM.values) * eigenMTM.vectors', color=:cool, clim=(-1.5, 1.5), 
+            title="eigen(MT⋅M) vectors * diag(values) * vectors'", 
+            ylabel="\n #th Vector", 
+            xlabel="#th site", 
+            xticks=[1, 5, 10, 15, 20, 25, 30, 35, 40], 
+            yticks=[1, 5, 10, 15, 20, 25, 30, 35, 40], yflip=true,
+            aspect_ratio=:equal,
+            right_margin = 10Plots.mm,
+            dpi=600, size=(625, 600))
+    savefig("./1212/eigenMTM_check.png")
+
+    """
+    VapT = Vap'
+    for k in eachindex(VapT[:, 1])
+        if VapT[k, 1] < 0
+            VapT[k, :] = -VapT[k, :]
+        end
+    end
+
+    heatmap(VapT, color=:cool, clim=(-1, 1), 
+            title="SV by approx", 
+            ylabel="\n Singular Vector", 
+            xlabel="direction", 
+            xticks=[1, 5, 10, 15, 20, 25, 30, 35, 40],
+            yticks=[1, 5, 10, 15, 20, 25, 30, 35, 40],
+            aspect_ratio=:equal, 
+            right_margin = 10Plots.mm,
+            dpi=600, size=(625, 600))
+    savefig("SingularVector_approx.png")
+    """
+
+    plot(1:lorenz_parameter.num_sites, ones(lorenz_parameter.num_sites), ylims=(0.5, 1.6),
+         c=:black, linestyle=:dash, label="σ=1.0", 
+         xlabel="i", ylabel="Singular Value", title="sigma_k", 
+         dpi=600, size=(600, 600))
+
+    plot!(1:lorenz_parameter.num_sites, svdM.S,
+         linewidth=2, marker=:rect, markersize=7, 
+         label="S of svd(M)", c=:yellow)
+    
+    plot!(1:lorenz_parameter.num_sites, sqrt.(svdMTM.S),
+         linewidth=2, marker=:utriangle, markersize=6, 
+         label="sqrt(S) of svd(MT⋅M)", c=:lightgreen)
+    
+    plot!(1:lorenz_parameter.num_sites, sqrt.(eigenMTM.values),
+         linewidth=2, marker=:x, markersize=5, 
+         label="sqrt(Λ) of eigen(MT⋅M)", c=:blue)
+    
+
+    Stlm, Vtlm = Lorenz96.get_SV_by_Lanczos(X[1], tn[1], lorenz_parameter, rng; itr_max=3000)
+    Vtlm = Vtlm'
+
+    plot!(1:lorenz_parameter.num_sites, sqrt.(Stlm),
+    linewidth=1, marker=:+, markersize=5, 
+    label="sqrt(S) of Lanczos", c=:red)
+    
+    savefig("./1212/SingularValue_modes.png")
+
+
+    heatmap(Vtlm, color=:cool, clim=(-1.5, 1.5), 
+    title="SV by Lanczos", 
+    xlabel="\n #th Singular Vector mode", 
+    ylabel="#th site", 
+    xticks=[1, 5, 10, 15, 20, 25, 30, 35, 40],
+    yticks=[1, 5, 10, 15, 20, 25, 30, 35, 40], yflip=true,
+    aspect_ratio=:equal, 
+    right_margin = 10Plots.mm,
+    dpi=600, size=(625, 600))
+    savefig("./1212/SingularVector_TLM.png")
+
+    heatmap(compare(svdM.U, Vtlm), color=:winter, 
+    title="diff (svdM.U - Vtlm)", 
+    xlabel="\n #th Singular Vector mode", 
+    ylabel="#th site", 
+    xticks=[1, 5, 10, 15, 20, 25, 30, 35, 40],
+    yticks=[1, 5, 10, 15, 20, 25, 30, 35, 40], yflip=true,
+    aspect_ratio=:equal, 
+    right_margin = 10Plots.mm,
+    dpi=600, size=(625, 600))
+    savefig("./1212/svdM_U-Lanczos.png")
+
+    heatmap(compare(svdM.V, Vtlm), color=:winter,
+    title="diff (svdM.V - Vtlm)", 
+    xlabel="\n #th Singular Vector mode", 
+    ylabel="#th site", 
+    xticks=[1, 5, 10, 15, 20, 25, 30, 35, 40],
+    yticks=[1, 5, 10, 15, 20, 25, 30, 35, 40], yflip=true,
+    aspect_ratio=:equal, 
+    right_margin = 10Plots.mm,
+    dpi=600, size=(625, 600))
+    savefig("./1212/svdM_V-Lanczos.png")
+
+    heatmap(compare(svdMTM.U, Vtlm), color=:winter, 
+    title="diff (svdMTM.U - Vtlm)", 
+    xlabel="\n #th Singular Vector mode", 
+    ylabel="#th site", 
+    xticks=[1, 5, 10, 15, 20, 25, 30, 35, 40],
+    yticks=[1, 5, 10, 15, 20, 25, 30, 35, 40], yflip=true,
+    aspect_ratio=:equal, 
+    right_margin = 10Plots.mm,
+    dpi=600, size=(625, 600))
+    savefig("./1212/svdMTM_U-Lanczos.png")
+
+    heatmap(compare(svdMTM.V, Vtlm), color=:winter, 
+    title="diff (svdMTM.V - Vtlm)", 
+    xlabel="\n #th Singular Vector mode", 
+    ylabel="#th site", 
+    xticks=[1, 5, 10, 15, 20, 25, 30, 35, 40],
+    yticks=[1, 5, 10, 15, 20, 25, 30, 35, 40], yflip=true,
+    aspect_ratio=:equal, 
+    right_margin = 10Plots.mm,
+    dpi=600, size=(625, 600))
+    savefig("./1212/svdMTM_V-Lanczos.png")
+
+    heatmap(compare(svdMTM.U, svdMTM.V), color=:winter, 
+    title="diff (svdMTM.U - svdMTM.V)", 
+    xlabel="\n #th Singular Vector mode", 
+    ylabel="#th site", 
+    xticks=[1, 5, 10, 15, 20, 25, 30, 35, 40],
+    yticks=[1, 5, 10, 15, 20, 25, 30, 35, 40], yflip=true,
+    aspect_ratio=:equal, 
+    right_margin = 10Plots.mm,
+    dpi=600, size=(625, 600))
+    savefig("./1212/svdMTM_U-svdMTM_V.png")
+
+    heatmap(compare(eigenMTM.vectors, svdMTM.V), color=:winter, 
+    title="diff (eigenMTM.V - svdMTM.V)", 
+    xlabel="\n #th Singular Vector mode", 
+    ylabel="#th site", 
+    xticks=[1, 5, 10, 15, 20, 25, 30, 35, 40],
+    yticks=[1, 5, 10, 15, 20, 25, 30, 35, 40], yflip=true,
+    aspect_ratio=:equal, 
+    right_margin = 10Plots.mm,
+    dpi=600, size=(625, 600))
+    savefig("./1212/eigenMTM_V-svdMTM_V.png")
+
+    heatmap(compare(eigenMTM.vectors, Vtlm), color=:winter, 
+    title="diff (eigenMTM.vectors - Vtlm)", 
+    xlabel="\n #th Singular Vector mode", 
+    ylabel="#th site", 
+    xticks=[1, 5, 10, 15, 20, 25, 30, 35, 40],
+    yticks=[1, 5, 10, 15, 20, 25, 30, 35, 40], yflip=true,
+    aspect_ratio=:equal, 
+    right_margin = 10Plots.mm,
+    dpi=600, size=(625, 600))
+    savefig("./1212/eigenMTM_V-Lanczos.png")
+
+end
+
+function compare(U, V_lanczos)
+    diffV = zeros(Float64, size(U))
+
+    for k in eachindex(U[1, :])
+        u = U[:, k]
+        v = V_lanczos[:, k]
+        diffp = u - v
+        diffm = u + v
+    
+        if norm(diffp, 2) < norm(diffm, 2)
+            diffV[:, k] = diffp
+        else
+            diffV[:, k] = diffm
+        end
+    end
+
+    return diffV
 end
 
 function assignment3_check_BV(X, tn, lorenz_parameter, rng ;alpha=0.9, ens_size=100)

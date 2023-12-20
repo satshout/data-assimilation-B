@@ -6,5 +6,6 @@
         //"https://raw.githubusercontent.com/kaisugi/marp-theme-academic/main/themes/academic.css"
 
     ],
-    "markdown.marp.enableHtml": true
+    "markdown.marp.enableHtml": true,
+    "julia.environmentPath": "/Users/satosho/Library/CloudStorage/OneDrive-KyotoUniversity/U-Kyoto_onCloud/B4Autumn/データ同化B/assimilationB/data-assimilationB"
 }
